@@ -1,62 +1,82 @@
-import os
 from flask import Flask, render_template, request, redirect, url_for, flash
+import os
 
 app = Flask(__name__)
-app.secret_key = "replace_this_with_a_secret"  # cần để dùng flash()
+app.secret_key = "supersecretkey"  # cần để flash message
 
-# Dùng đường dẫn tuyệt đối (đặt file date.txt cùng thư mục với app.py)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATE_FILE = os.path.join(BASE_DIR, "date.txt")
+# Cấu hình
+UPLOAD_FOLDER = "static"
+ADMIN_PASSWORD = "123456"  # đổi theo ý bạn
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
-# Mật khẩu admin (có thể đặt bằng biến môi trường ở production)
-ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "123456")
+# Dữ liệu mặc định
+DATE_FILE = "date.txt"
+CURRENT_IMAGE_NAME = "chuoi.png"  # ảnh mặc định
 
+# ---- Hàm xử lý ngày ----
 def get_date():
-    try:
-        if os.path.exists(DATE_FILE):
-            with open(DATE_FILE, "r", encoding="utf-8") as f:
-                return f.read().strip()
-    except Exception as e:
-        app.logger.exception("Lỗi khi đọc file ngày")
-    return "Chưa có ngày"
+    if os.path.exists(DATE_FILE):
+        with open(DATE_FILE, "r", encoding="utf-8") as f:
+            return f.read().strip()
+    return "Chưa cập nhật"
 
 def save_date(new_date):
-    try:
-        # đảm bảo strip và lưu
-        with open(DATE_FILE, "w", encoding="utf-8") as f:
-            f.write(new_date.strip())
-        app.logger.info("Saved date '%s' to %s", new_date, DATE_FILE)
-        return True
-    except Exception as e:
-        app.logger.exception("Lỗi khi ghi file ngày")
-        return False
+    with open(DATE_FILE, "w", encoding="utf-8") as f:
+        f.write(new_date)
 
+# ---- Trang chính ----
 @app.route("/")
 def index():
     current_date = get_date()
-    return render_template("index.html", ngay=current_date)
+    return render_template("index.html", ngay=current_date, image_file=CURRENT_IMAGE_NAME)
 
-@app.route("/admin", methods=["GET", "POST"])
+# ---- Trang admin ----
+@app.route("/admin")
 def admin():
-    error = None
-    if request.method == "POST":
-        new_date = request.form.get("ngay", "").strip()
-        password = request.form.get("password", "")
+    return render_template("admin.html")
 
-        if password != ADMIN_PASSWORD:
-            error = "Sai mật khẩu! Bạn không có quyền cập nhật."
-            app.logger.warning("Thử đăng nhập sai mật khẩu từ IP")
-        else:
-            ok = save_date(new_date)
-            if ok:
-                flash("Cập nhật ngày thành công.")
-                return redirect(url_for("index"))
-            else:
-                error = "Không thể lưu ngày — kiểm tra quyền/đường dẫn trên server."
+# ---- Cập nhật ngày ----
+@app.route("/update-date", methods=["POST"])
+def update_date():
+    password = request.form.get("password", "")
+    new_date = request.form.get("new_date", "")
 
-    current_date = get_date()
-    return render_template("admin.html", ngay=current_date, error=error)
+    if password != ADMIN_PASSWORD:
+        flash("Sai mật khẩu! Không thể cập nhật ngày.")
+        return redirect(url_for("admin"))
+
+    save_date(new_date)
+    flash("Cập nhật ngày thành công!")
+    return redirect(url_for("index"))
+
+# ---- Đổi ảnh sản phẩm ----
+@app.route("/upload-image", methods=["POST"])
+def upload_image():
+    global CURRENT_IMAGE_NAME
+    password = request.form.get("password", "")
+
+    if password != ADMIN_PASSWORD:
+        flash("Sai mật khẩu! Không thể đổi ảnh.")
+        return redirect(url_for("admin"))
+
+    if "new_image" not in request.files:
+        flash("Chưa chọn file ảnh.")
+        return redirect(url_for("admin"))
+
+    file = request.files["new_image"]
+    if file.filename == "":
+        flash("Tên file không hợp lệ.")
+        return redirect(url_for("admin"))
+
+    # Lưu ảnh vào static/
+    save_path = os.path.join(app.config["UPLOAD_FOLDER"], file.filename)
+    file.save(save_path)
+
+    # Cập nhật tên file đang dùng
+    CURRENT_IMAGE_NAME = file.filename
+    flash("Đổi ảnh sản phẩm thành công!")
+    return redirect(url_for("index"))
+
 
 if __name__ == "__main__":
-    # debug=True chỉ dùng khi dev
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)

@@ -2,24 +2,52 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <title>Trang Admin</title>
+    <title>Admin - Quản lý</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 30px; background: #f0f0f0; }
+        h2 { color: #2c3e50; }
+        form { background: #fff; padding: 20px; margin-bottom: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        input, button { margin: 10px 0; padding: 8px; width: 100%; }
+        button { background: #27ae60; color: white; border: none; cursor: pointer; }
+        button:hover { background: #219150; }
+        .flash { color: red; }
+    </style>
 </head>
 <body>
-    <h1>Quản lý Ngày Nhập Lô</h1>
-    <form method="POST">
-        <label>Ngày nhập lô (dd/mm/yyyy):</label>
-        <input type="text" name="ngay" value="{{ ngay }}"><br><br>
+    <h2>Trang quản trị</h2>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">
+          {% for msg in messages %}
+            <p>{{ msg }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Form cập nhật ngày -->
+    <form action="/update-date" method="POST">
+        <h3>Cập nhật ngày nhập lô</h3>
+        <label>Ngày mới:</label>
+        <input type="text" name="new_date" placeholder="VD: 23/09/2025" required>
 
         <label>Mật khẩu quản trị:</label>
-        <input type="password" name="password"><br><br>
+        <input type="password" name="password" required>
 
         <button type="submit">Cập nhật</button>
     </form>
 
-    {% if error %}
-        <p style="color:red;">{{ error }}</p>
-    {% endif %}
+    <!-- Form đổi ảnh sản phẩm -->
+    <form action="/upload-image" method="POST" enctype="multipart/form-data">
+        <h3>Đổi ảnh sản phẩm</h3>
+        <label>Chọn ảnh mới:</label>
+        <input type="file" name="new_image" accept="image/*" required>
 
-    <p><a href="/">← Về trang chính</a></p>
+        <label>Mật khẩu quản trị:</label>
+        <input type="password" name="password" required>
+
+        <button type="submit">Đổi ảnh</button>
+    </form>
 </body>
 </html>
